@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+.node {
+  cursor: pointer;
+}
+.node circle {
+  fill: #fff;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+.node text {
+  font: 15px sans-serif;
+}
+.link {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 1.5px;
+}
+</style>
+<body>
+<!-- <script src="d3.min.js"></script>  -->
+<script src="https://d3js.org/d3.v3.min.js"></script>
+
+<script>
+var margin = {top: 10, right: 80, bottom: 10, left: 80},
+    width = 1200 - margin.right - margin.left,
+    height = 530 - margin.top - margin.bottom;
+var i = 0,
+    duration = 750,
+    root;
+var tree = d3.layout.tree()
+             .size([height, width]);
+var diagonal = d3.svg.diagonal()
+    .projection(function(d) { return [d.y, d.x]; });
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.right + margin.left)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+var flare={"name": "\u6570\u636e\u7ef4\u5ea6","children":[{"name":"\u7efc\u5408\u6570\u636e","children":[{"name":"\u4e2a\u6027\u5316\u6807\u7b7e","children":[{"name":"\u51fa\u884c\u65b9\u5f0f","children":[{"name":"\u5feb\u901f\u8212\u9002","size":327},{"name":"\u5b89\u5168\u7a33\u5b9a","size":327},{"name":"\u4eab\u53d7\u81ea\u9a7e","size":327},{"name":"\u6162\u8282\u594f\u4f53\u9a8c","size":327}]},{"name":"\u51fa\u884c\u76ee\u7684","children":[{"name":"\u5546\u52a1\u51fa\u884c","size":126},{"name":"\u4f11\u95f2\u5ea6\u5047","size":69},{"name":"\u6d3b\u52a8\u7ec4\u7ec7","size":496}]},{"name":"\u5ba2\u6237\u4ef7\u503c","children":[{"name":"\u6f5c\u529b\u5ba2\u6237","size":673},{"name":"\u6838\u5fc3\u5ba2\u6237","size":15},{"name":"\u9ad8\u51c0\u503c\u5ba2\u6237","size":988}]},{"name":"\u5174\u8da3\u7231\u597d","children":[{"name":"\u7f8e\u98df\u5bb6","size":448},{"name":"\u5065\u8eab\u7231\u597d\u8005","size":808},{"name":"\u6c7d\u8f66\u53d1\u70e7\u53cb","size":636},{"name":"\u65c5\u884c\u8fbe\u4eba","size":984}]},{"name":"\u5728\u7ebf\u884c\u4e3a","children":[{"name":"\u7535\u7ade\u94c1\u7c89","size":356},{"name":"\u793e\u4ea4\u8fbe\u4eba","size":389},{"name":"\u591c\u732b\u5b50","size":327}]}]}]}]}
+      
+  root = flare;
+  root.x0 = height / 2;
+  root.y0 = 0;
+  function collapse(d) {
+    if (d.children) {
+      d._children = d.children;
+      d._children.forEach(collapse);
+      d.children = null;
+    }
+  }
+  root.children.forEach(collapse);
+  update(root);
+d3.select(self.frameElement).style("height", "800px");
+function update(source) {
+  // Compute the new tree layout.
+  var nodes = tree.nodes(root).reverse(),
+      links = tree.links(nodes);
+  // Normalize for fixed-depth.
+  nodes.forEach(function(d) { d.y = d.depth * 180; });
+  // Update the nodes…
+  var node = svg.selectAll("g.node")
+      .data(nodes, function(d) { return d.id || (d.id = ++i); });
+  // Enter any new nodes at the parent's previous position.
+  var nodeEnter = node.enter().append("g")
+      .attr("class", "node")
+      .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
+      .on("click", click);
+  nodeEnter.append("circle")
+      .attr("r", 1e-6)
+      .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+  nodeEnter.append("text")
+      .attr("x", function(d) { return d.children || d._children ? -10 : 10; })
+      .attr("dy", ".35em")
+      .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
+      .text(function(d) { return d.name; })
+      .style("fill-opacity", 1e-6);
+  // Transition nodes to their new position.
+  var nodeUpdate = node.transition()
+      .duration(duration)
+      .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
+  nodeUpdate.select("circle")
+      .attr("r", 4.5)
+      .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+  nodeUpdate.select("text")
+      .style("fill-opacity", 1);
+  // Transition exiting nodes to the parent's new position.
+  var nodeExit = node.exit().transition()
+      .duration(duration)
+      .attr("transform", function(d) { return "translate(" + source.y + "," + source.x + ")"; })
+      .remove();
+  nodeExit.select("circle")
+      .attr("r", 1e-6);
+  nodeExit.select("text")
+      .style("fill-opacity", 1e-6);
+  // Update the links…
+  var link = svg.selectAll("path.link")
+      .data(links, function(d) { return d.target.id; });
+  // Enter any new links at the parent's previous position.
+  link.enter().insert("path", "g")
+      .attr("class", "link")
+      .attr("d", function(d) {
+        var o = {x: source.x0, y: source.y0};
+        return diagonal({source: o, target: o});
+      });
+  // Transition links to their new position.
+  link.transition()
+      .duration(duration)
+      .attr("d", diagonal);
+  // Transition exiting nodes to the parent's new position.
+  link.exit().transition()
+      .duration(duration)
+      .attr("d", function(d) {
+        var o = {x: source.x, y: source.y};
+        return diagonal({source: o, target: o});
+      })
+      .remove();
+  // Stash the old positions for transition.
+  nodes.forEach(function(d) {
+    d.x0 = d.x;
+    d.y0 = d.y;
+  });
+}
+// Toggle children on click.
+function click(d) {
+  if (d.children) {
+    d._children = d.children;
+    d.children = null;
+  } else {
+    d.children = d._children;
+    d._children = null;
+  }
+  update(d);
+}
+</script>
